@@ -11,6 +11,8 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import javax.validation.constraints.Pattern;
+import javax.validation.constraints.Size;
 import java.util.Collection;
 import java.util.List;
 
@@ -25,7 +27,11 @@ public class User implements UserDetails {
 private Long id;
 private String name;
 private String email;
+    @Pattern(regexp = "^(?=.[0-9])(?=.[a-zA-Z])(?=.[@#$%^&+=!]).$", message = "Password must be alphanumeric with at least one special character")
+    @Size(min = 5, max = 20, message = "Password length must be between 5 and 8 characters")
 private String password;
+private boolean mfaEnabled;
+private String secret;
 @Enumerated(EnumType.STRING)
 private Role role;
 

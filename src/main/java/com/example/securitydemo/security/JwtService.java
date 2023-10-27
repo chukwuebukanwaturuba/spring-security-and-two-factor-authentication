@@ -20,8 +20,10 @@ import java.util.function.Function;
 public class JwtService {
     @Value("${application.jwt.security.secretKey}")
     String secretKey;
-    @Value("${application.jwt.security.expiration}") //30mins
+    @Value("${application.jwt.security.expiration}") //a day
     long expiration;
+    @Value("${application.jwt.security.refresh-token}") // 7 days
+    private long refreshExpiration;
 
     //Method to extract Username
     public String extractUsername(String token) {
@@ -33,36 +35,59 @@ public class JwtService {
         final  Claims claims = extractAllClaims(token);
         return claimResolver.apply(claims);
     }
-    //Building the token
-    public String buildToken(
-            Map<String, Object> extraClaims,
-            UserDetails userDetails,
-            long expiration,
-            HttpServletRequest servletRequest) {
-        Claims claims = Jwts.claims().setSubject(userDetails.getUsername());
-        claims.putAll(extraClaims);
-        claims.setIssuer(servletRequest.getRequestURL().toString());
-        claims.put("iat", new Date(System.currentTimeMillis()));
-        claims.put("exp", new Date(System.currentTimeMillis() + expiration));
-        return Jwts
-                .builder()
-                .setClaims(claims)
-                .signWith(getSignInKey(), SignatureAlgorithm.HS256)
-                .compact();
+
+    //Method to generate the JwtToken needed to Authenticate users
+    public String generateToken(UserDetails userDetails){
+        return generateToken(new HashMap<>(), userDetails);
     }
 
     //Helper method to help generate Tokens with extra claims
     public String generateToken(
             Map<String, Object> extraClaims,
-            UserDetails userDetails,HttpServletRequest servletRequest
+            UserDetails userDetails
     ){
-        return buildToken(extraClaims, userDetails, expiration,servletRequest);
+        return buildToken(extraClaims, userDetails, expiration);
     }
 
-    //Method to generate the JwtToken needed to Authenticate users
-    public String generateToken(UserDetails userDetails, HttpServletRequest servletRequest){
-        return generateToken(new HashMap<>(), userDetails, servletRequest);
+    public String generateRefreshToken(
+            UserDetails userDetails
+    ) {
+        return buildToken(new HashMap<>(), userDetails, refreshExpiration);
     }
+
+    //Building the token
+    public String buildToken(
+            Map<String, Object> extraClaims,
+            UserDetails userDetails,
+            long expiration
+            ) {
+
+        return Jwts
+                .builder()
+                .setClaims(extraClaims)
+                .setSubject(userDetails.getUsername())
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis() + expiration))
+                .signWith(getSignInKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+    //Method to check if token is valid
+    public boolean isTokenValid(String token, UserDetails userDetails) {
+        final String userName = extractUsername(token);
+        return (userName.equals(userDetails.getUsername())) && !isTokenExpired(token);
+    }
+
+    //Method to check if token is expired
+    private boolean isTokenExpired(String token) {
+        return extractExpiration(token).before(new Date());
+
+    }
+
+    //Method to extract the expiration of the Jwt
+    private Date extractExpiration(String token) {
+        return extractClaim(token, Claims::getExpiration);
+    }
+
     //Method to extract the all claims related to the token
     private Claims extractAllClaims(String token) {
         return Jwts
@@ -73,26 +98,10 @@ public class JwtService {
                 .getBody();
     }
 
-    //Method to check if token is valid
-    public boolean isTokenValid(String token, UserDetails userDetails) {
-        final String userName = extractUsername(token);
-        return (userName.equals(userDetails.getUsername())) && !isTokenExpired(token);
-    }
-
-    //Method to check if token is expired
-    private boolean isTokenExpired(String token) {
-        return extractExpiration(token).before(new Date());
-        
-    }
-
-    //Method to extract the expiration of the Jwt
-    private Date extractExpiration(String token) {
-        return extractClaim(token, Claims::getExpiration);
-    }
-
     // Helper method to get the signing key
     private Key getSignInKey() {
         byte[] keyBytes = Decoders.BASE64.decode(secretKey);
         return Keys.hmacShaKeyFor(keyBytes);
     }
+
 }

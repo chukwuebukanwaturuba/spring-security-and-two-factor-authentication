@@ -3,9 +3,9 @@ package com.example.securitydemo.controller.auth;
 import com.example.securitydemo.exception.ExistingException;
 import com.example.securitydemo.model.dto.request.LoginRequest;
 import com.example.securitydemo.model.dto.request.RegistrationRequest;
+import com.example.securitydemo.model.dto.request.VerificationRequest;
 import com.example.securitydemo.model.dto.response.AuthenticationResponse;
 import com.example.securitydemo.service.AdminService;
-import com.example.securitydemo.service.AuthenticationService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -21,9 +21,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminController {
     private final AdminService adminService;
     @PostMapping("/register")
-    public ResponseEntity<AuthenticationResponse> register(
+    public ResponseEntity<?> register(
             @RequestBody RegistrationRequest request) throws ExistingException {
-        return ResponseEntity.ok(adminService.register(request));
+        var response = adminService.register(request);
+        if (request.isMfaEnabled()){
+            return ResponseEntity.ok(response);
+        }
+        return ResponseEntity.accepted().build();
     }
 
     @PostMapping("/authenticate")
@@ -37,5 +41,12 @@ public class AdminController {
     public ResponseEntity<AuthenticationResponse> registerUser(
             @RequestBody RegistrationRequest request) throws ExistingException {
         return ResponseEntity.ok(adminService.registerUser(request));
+    }
+
+    @PostMapping("/verify")
+    public ResponseEntity<?> verifyCode(
+            @RequestBody VerificationRequest verificationRequest
+    ){
+        return ResponseEntity.ok(adminService.verifyCode(verificationRequest));
     }
 }
