@@ -10,7 +10,7 @@ import {VerificationRequest} from "../models/verification-request";
   providedIn: 'root'
 })
 export class AuthenticationService {
-  private baseUrl = 'http://localhost:8080/api/v1/auth'
+  private baseUrl = 'http://localhost:8080/api/admin'
 
   constructor(
     private http: HttpClient
